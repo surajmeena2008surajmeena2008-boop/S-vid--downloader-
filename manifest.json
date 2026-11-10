@@ -2,7 +2,7 @@
   "name": "Online Downloader",
   "short_name": "Downloader",
   "description": "100% free online downloader",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

@@ -42,6 +42,7 @@ _hits = {}
 # Files the site serves from the repo root (or a static/ folder)
 PUBLIC_FILES = {
     "index.html": "text/html",
+    "landing.html": "text/html",
     "manifest.json": "application/manifest+json",
     "icon-192.png": "image/png",
     "icon-512.png": "image/png",
@@ -227,6 +228,14 @@ def serve_public(name):
 
 @app.get("/")
 def index():
+    for d in (BASE, os.path.join(BASE, "static")):
+        if os.path.exists(os.path.join(d, "landing.html")):
+            return serve_public("landing.html")
+    return serve_public("index.html")
+
+
+@app.get("/app")
+def app_page():
     return serve_public("index.html")
 
 
