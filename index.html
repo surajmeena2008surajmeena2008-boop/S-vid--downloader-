@@ -50,11 +50,15 @@ button:focus-visible,.opt:focus-visible{outline:3px solid var(--cyan);outline-of
 .opt{border-radius:28px;padding:18px 10px 20px;background:linear-gradient(180deg,#7b0fc4,#1b0536 90%);display:flex;flex-direction:column;align-items:center;gap:10px;
   border:3px solid transparent;transition:border-color .2s,box-shadow .2s,opacity .2s;opacity:.6}
 .opt[aria-pressed="true"]{opacity:1;border-color:#fff;box-shadow:0 0 26px #a020f0aa}
+.opt small{font-size:14px;color:var(--soft);margin-top:-8px}
 .opt svg{width:84px;height:70px}.opt .disp{font-size:38px}
-.prev{border-radius:28px;background:#444;min-height:200px;display:grid;place-items:center;overflow:hidden}
+.q{display:flex;flex-wrap:wrap;gap:8px;margin-top:-2px}
+.chip{border-radius:999px;padding:9px 14px;background:#1b0536;border:2px solid #5a2a96;font-size:14px;font-weight:600;color:var(--soft)}
+.chip[aria-checked="true"]{background:linear-gradient(180deg,#7b0fc4,#3a0a70);border-color:#fff;color:#fff}
+.prev{border-radius:28px;background:#444;min-height:200px;display:grid;place-items:center;overflow:hidden;width:100%;margin-inline:auto}
 .prev .ph{font-size:76px;line-height:1;background:none;-webkit-text-fill-color:#9a9a9a;color:#9a9a9a}
-.prev video,.prev img{display:none;width:100%;max-height:60vh;background:#000;object-fit:contain}
-.prev.has{background:#000}.prev.has .ph{display:none}
+.prev video,.prev img{display:none;width:100%;height:100%;background:#000;object-fit:contain}
+.prev.has{background:#000;min-height:0}.prev.has .ph{display:none}
 .prev.has.vid video{display:block}.prev.has.pic img{display:block}
 .ptitle{margin:-8px 6px 0;font-size:14px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none}
 .dl{display:flex;align-items:center;justify-content:space-between;width:100%;border-radius:26px;padding:10px 28px;background:linear-gradient(180deg,#12081f,#4a2f80)}
@@ -97,13 +101,15 @@ button:focus-visible,.opt:focus-visible{outline:3px solid var(--cyan);outline-of
   <div class="opts">
     <button class="opt" id="optA" aria-pressed="false">
       <svg viewBox="0 0 84 70" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"><path d="M4 36h12l5-12 7 36 8-56 8 66 8-48 6 14h18"/></svg>
-      <span class="disp">320 kbps</span>
+      <span class="disp">Original</span><small>audio</small>
     </button>
     <button class="opt" id="optV" aria-pressed="true">
       <svg viewBox="0 0 84 70" fill="#000"><circle cx="26" cy="16" r="12"/><circle cx="52" cy="16" r="12"/><rect x="8" y="28" width="52" height="36" rx="8"/><path d="M62 40l18-10v32L62 52z"/></svg>
-      <span class="disp">1080p</span>
+      <span class="disp">Original</span><small>video</small>
     </button>
   </div>
+
+  <div class="q" id="q" role="radiogroup" aria-label="Quality"></div>
 
   <section class="prev" id="prev" aria-label="Preview">
     <span class="ph disp" id="ph">Preview</span>
@@ -122,6 +128,7 @@ button:focus-visible,.opt:focus-visible{outline:3px solid var(--cyan);outline-of
 <script>
 var API_URL = "/api/download";
 var PREVIEW_URL = "/api/preview";
+var VIDEO_URL = "/api/preview-video";
 
 var SITES = {
   pinterest:/(^|\.)(pinterest\.[a-z.]+|pin\.it)$/i,
@@ -131,13 +138,14 @@ var SITES = {
   twitter:/(^|\.)(twitter\.com|x\.com)$/i
 };
 var $ = function(id){return document.getElementById(id)};
-var url=$("url"), msg=$("msg"), dl=$("dl"), prev=$("prev"), pv=$("pv"), pimg=$("pimg"), fmt="video", site=null, token=0;
+var url=$("url"), msg=$("msg"), dl=$("dl"), prev=$("prev"), pv=$("pv"), pimg=$("pimg"), fmt="video", site=null, token=0, heights=[], qsel="best", STEPS=[2160,1440,1080,720,480,360,240];
 
 function say(t,c){msg.textContent=t;msg.className="msg "+(c||"")}
 function light(p){document.querySelectorAll("#social img, .social img").forEach(function(i){i.classList.toggle("on",i.dataset.p===p)})}
 function resetPreview(){
-  token++; pv.pause(); pv.removeAttribute("src"); pv.removeAttribute("poster"); pv.load();
-  pimg.removeAttribute("src"); prev.className="prev"; $("ph").textContent="Preview"; $("ptitle").style.display="none";
+  token++; pv.onerror=null; pv.pause(); pv.removeAttribute("src"); pv.removeAttribute("poster"); pv.load();
+  pimg.removeAttribute("src"); prev.className="prev"; prev.style.aspectRatio=""; prev.style.width="";
+  $("ph").textContent="Preview"; $("ptitle").style.display="none"; heights=[]; chips();
 }
 function check(){
   var v=url.value.trim(); site=null; light(null); dl.disabled=true;
@@ -149,30 +157,53 @@ function check(){
   if(site==="youtube"){say("YouTube isn’t supported yet. Try an Instagram, Facebook, Pinterest or Twitter link.","err");return false}
   light(site); dl.disabled=false; say("Link looks good. Tap Go for a preview, or Download.","ok"); return true;
 }
+function fit(w,h){ if(!w||!h)return; prev.style.aspectRatio=w+" / "+h; prev.style.width="min(100%, "+(70*w/h).toFixed(2)+"vh)" }
+pimg.onload=function(){fit(pimg.naturalWidth,pimg.naturalHeight)};
+pv.addEventListener("loadedmetadata",function(){fit(pv.videoWidth,pv.videoHeight)});
 function showPic(src){pimg.src=src;prev.classList.add("has","pic")}
-function loadPreview(){
-  var my=++token; $("ph").textContent="Loading…"; prev.className="prev"; say("Loading preview…");
-  fetch(PREVIEW_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:url.value.trim()})})
+function post(u,body){
+  return fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
   .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||("Server returned "+r.status));return j})})
-  .then(function(j){
+}
+function loadPreview(){
+  var my=++token, link=url.value.trim(); $("ph").textContent="Loading…"; prev.className="prev"; say("Loading preview…");
+  post(PREVIEW_URL,{url:link}).then(function(j){
     if(my!==token)return;
-    if(!j.video_url&&!j.thumbnail){throw new Error("No preview found for this link")}
+    heights=j.heights||[]; chips();
     if(j.title){$("ptitle").textContent=j.title;$("ptitle").style.display="block"}
-    if(j.video_url){
-      pv.onerror=function(){ if(j.thumbnail){prev.classList.remove("vid");showPic(j.thumbnail)} say("This video can’t play here, but Download still works.","err") };
+    if(j.thumbnail){showPic(j.thumbnail)}
+    say("Loading video… this can take a few seconds.");
+    return post(VIDEO_URL,{url:link}).then(function(v){
+      if(my!==token)return;
+      pv.onerror=function(){ prev.classList.remove("vid"); if(j.thumbnail)prev.classList.add("pic"); say("This video can’t play here, but Download still works.","err") };
       if(j.thumbnail)pv.poster=j.thumbnail;
-      pv.src=j.video_url; prev.classList.add("has","vid");
-    } else { showPic(j.thumbnail) }
-    say("Preview ready. Pick a format and download.","ok");
-  })
-  .catch(function(e){ if(my!==token)return; $("ph").textContent="Preview"; say("No preview: "+e.message+". Download may still work.","err") });
+      pv.src=v.video_url; prev.classList.remove("pic"); prev.classList.add("has","vid");
+      say("Preview ready. Pick a format and download.","ok");
+    });
+  }).catch(function(e){ if(my!==token)return; if(!prev.classList.contains("has"))$("ph").textContent="Preview"; say("No video preview: "+e.message+". Download still works.","err") });
 }
 $("go").onclick=function(){ if(check()) loadPreview() };
 url.addEventListener("input",function(){ $("clr").style.display=url.value?"block":"none"; resetPreview(); check() });
 url.addEventListener("keydown",function(e){if(e.key==="Enter"){$("go").click()}});
 $("clr").onclick=function(){url.value="";$("clr").style.display="none";resetPreview();check();url.focus()};
 
-function pick(f){fmt=f;$("optA").setAttribute("aria-pressed",f==="audio");$("optV").setAttribute("aria-pressed",f==="video")}
+function chips(){
+  var list=[];
+  if(fmt==="audio"){ list=[["best","Original"],["320","MP3 320 kbps"],["192","MP3 192 kbps"],["128","MP3 128 kbps"]] }
+  else{
+    var top=heights.length?heights[0]:0;
+    list=[["best",top?"Original ("+top+"p)":"Original"]];
+    STEPS.forEach(function(h){ if(top?h<top:h<=1080) list.push([String(h),h+"p"]) });
+  }
+  if(!list.some(function(x){return x[0]===qsel})) qsel="best";
+  var box=$("q"); box.innerHTML="";
+  list.forEach(function(x){
+    var b=document.createElement("button"); b.type="button"; b.className="chip"; b.setAttribute("role","radio");
+    b.setAttribute("aria-checked",x[0]===qsel); b.textContent=x[1];
+    b.onclick=function(){qsel=x[0];chips()}; box.appendChild(b);
+  });
+}
+function pick(f){fmt=f;$("optA").setAttribute("aria-pressed",f==="audio");$("optV").setAttribute("aria-pressed",f==="video");chips()}
 $("optA").onclick=function(){pick("audio")};
 $("optV").onclick=function(){pick("video")};
 
@@ -180,20 +211,24 @@ dl.onclick=function(){
   if(!check())return;
   var bar=$("bar"),fill=$("fill"); bar.style.display="block"; fill.style.width="30%"; dl.disabled=true; say("Preparing your file…");
   fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({url:url.value.trim(),format:fmt==="audio"?"mp3-320":"mp4-1080"})})
+    body:JSON.stringify({url:url.value.trim(),format:fmt,quality:qsel})})
   .then(function(r){
     if(!r.ok)throw new Error("Server returned "+r.status);
     fill.style.width="70%";
-    return (r.headers.get("content-type")||"").indexOf("json")>-1 ? r.json().then(function(j){return j.url}) : r.blob().then(function(b){return URL.createObjectURL(b)});
+    if((r.headers.get("content-type")||"").indexOf("json")>-1) return r.json().then(function(j){return {href:j.url,name:null}});
+    var cd=r.headers.get("content-disposition")||"", m=cd.match(/filename\*=UTF-8''([^;]+)/i), n=null;
+    if(m){n=decodeURIComponent(m[1])}else{m=cd.match(/filename="?([^";]+)"?/i); if(m)n=m[1]}
+    return r.blob().then(function(b){return {href:URL.createObjectURL(b),name:n}});
   })
-  .then(function(href){
-    var a=document.createElement("a"); a.href=href; a.download=fmt==="audio"?"audio.mp3":"video.mp4";
+  .then(function(o){
+    var a=document.createElement("a"); a.href=o.href; a.download=o.name||(fmt==="audio"?(qsel==="best"?"audio.m4a":"audio.mp3"):"video.mp4");
     document.body.appendChild(a); a.click(); a.remove();
     fill.style.width="100%"; say("Download started.","ok");
   })
   .catch(function(e){say("Download failed: "+e.message+". Check the link and try again.","err")})
   .then(function(){dl.disabled=false;setTimeout(function(){bar.style.display="none";fill.style.width="0"},1500)});
 };
+chips();
 </script>
 </body>
 </html>
