@@ -113,9 +113,16 @@ def download():
         return jsonify(error=str(e)[:300]), 500
 
 
+BASE = os.path.dirname(os.path.abspath(__file__))
+
+
 @app.get("/")
 def index():
-    return send_from_directory(app.static_folder, "index.html")
+    # index.html can sit next to server.py or inside a static/ folder
+    for d in (os.path.join(BASE, "static"), BASE):
+        if os.path.exists(os.path.join(d, "index.html")):
+            return send_from_directory(d, "index.html")
+    return jsonify(error="index.html not found"), 404
 
 
 @app.get("/health")
