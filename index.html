@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Online Downloader</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Inter:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#05030d; --violet:#6a0dad; --violet-hi:#a020f0; --violet-deep:#2a0a55;
+  --ink:#fff; --soft:#d9b8ff; --cyan:#4df0f0; --danger:#ff7a8a; --ok:#7dffb0;
+  color-scheme:dark; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; min-height:100vh; color:var(--ink); font-family:Inter,system-ui,sans-serif;
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),
+    radial-gradient(1px 1px at 38% 8%,#fff,transparent),
+    radial-gradient(1.5px 1.5px at 71% 22%,#cfe,transparent),
+    radial-gradient(1px 1px at 88% 12%,#fff,transparent),
+    radial-gradient(1px 1px at 22% 52%,#fff,transparent),
+    radial-gradient(1.5px 1.5px at 64% 64%,#fff,transparent),
+    radial-gradient(1px 1px at 91% 78%,#fff,transparent),
+    radial-gradient(1px 1px at 8% 86%,#fff,transparent),
+    radial-gradient(60% 40% at 15% 100%,#0e5a66aa,transparent),
+    var(--bg);
+}
+.app{max-width:480px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:18px}
+.disp{font-family:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;font-weight:900;letter-spacing:.02em;
+  background:linear-gradient(180deg,#fff 10%,var(--violet-hi) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.logo{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#5a4a66,#4a0e7a);display:grid;place-items:center;flex:none}
+.tag{text-align:right;font-size:30px;line-height:1}
+.tag span{display:block}
+.tag .w{color:#fff;background:none;-webkit-text-fill-color:#fff}
+.social{display:flex;gap:10px;justify-content:flex-end}
+.social i{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-style:normal;font-weight:600;font-size:17px;
+  opacity:.55;transition:opacity .2s,transform .2s,box-shadow .2s}
+.social i.on{opacity:1;transform:scale(1.12);box-shadow:0 0 0 2px #fff,0 0 18px var(--violet-hi)}
+.hero{border-radius:28px;padding:18px 20px 30px;background:linear-gradient(180deg,#52009e,#12031f 95%)}
+.hero h1{margin:0;font-size:76px;line-height:.95}
+.hero p{margin:6px 0 0;color:var(--soft);font-size:15px}
+.row{display:flex;gap:10px;align-items:stretch}
+.field{flex:1;display:flex;align-items:center;gap:10px;background:#fff;border-radius:18px;padding:0 14px;min-width:0}
+.field input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:16px;color:#111;padding:16px 0}
+.field input::placeholder{color:#777}
+.field:focus-within{box-shadow:0 0 0 3px var(--violet-hi)}
+button{font:inherit;cursor:pointer;border:0;color:inherit}
+button:focus-visible,.opt:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+.go{width:68px;border-radius:18px;font-size:34px;background:linear-gradient(180deg,var(--violet-hi),var(--violet-deep))}
+.go span{color:#fff}
+.msg{min-height:20px;margin:-6px 4px 0;font-size:14px}
+.msg.err{color:var(--danger)} .msg.ok{color:var(--ok)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.opt{border-radius:28px;padding:18px 10px 20px;background:linear-gradient(180deg,#7b0fc4,#1b0536 90%);display:flex;flex-direction:column;align-items:center;gap:10px;
+  border:3px solid transparent;transition:border-color .2s,box-shadow .2s,opacity .2s;opacity:.6}
+.opt[aria-pressed="true"]{opacity:1;border-color:#fff;box-shadow:0 0 26px #a020f0aa}
+.opt svg{width:84px;height:70px}
+.opt .disp{font-size:38px}
+.dl{display:flex;align-items:center;justify-content:space-between;width:100%;border-radius:26px;padding:12px 28px;
+  background:linear-gradient(180deg,#12081f,#4a2f80)}
+.dl .disp{font-size:56px}
+.dl:disabled{opacity:.45;cursor:not-allowed}
+.bar{height:6px;border-radius:3px;background:#ffffff22;overflow:hidden;display:none}
+.bar b{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet-hi));transition:width .3s}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="52" height="52"><path d="M52 10H22a10 10 0 0 0 0 20h20a10 10 0 0 1 0 20H12" fill="none" stroke="#4df0f0" stroke-width="7" stroke-linecap="round"/><rect x="22" y="28" width="22" height="26" rx="5" fill="#f2605f"/><path d="M33 34v10m-5-4 5 5 5-5" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+    </div>
+    <div class="tag disp"><span>100% Free</span><span class="w">online downloader</span></div>
+  </header>
+
+  <div class="social" id="social" aria-label="Supported sites">
+    <i data-p="pinterest" style="background:#e60023">P</i>
+    <i data-p="facebook" style="background:#1877f2">f</i>
+    <i data-p="instagram" style="background:linear-gradient(45deg,#f9ce34,#ee2a7b,#6228d7)">◎</i>
+    <i data-p="youtube" style="background:#f00">▶</i>
+    <i data-p="twitter" style="background:#1d9bf0">t</i>
+  </div>
+
+  <section class="hero">
+    <h1 class="disp">Welcome</h1>
+    <p>Paste a link, pick a format, download.</p>
+  </section>
+
+  <div class="row">
+    <label class="field">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/></svg>
+      <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="paste your link here…" aria-label="Link to download">
+    </label>
+    <button class="go disp" id="go" aria-label="Check link"><span>Go</span></button>
+  </div>
+  <div class="msg" id="msg" role="status" aria-live="polite"></div>
+
+  <div class="opts">
+    <button class="opt" id="optA" aria-pressed="false">
+      <svg viewBox="0 0 84 70" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"><path d="M4 36h12l5-12 7 36 8-56 8 66 8-48 6 14h18"/></svg>
+      <span class="disp">320 kbps</span>
+    </button>
+    <button class="opt" id="optV" aria-pressed="true">
+      <svg viewBox="0 0 84 70" fill="#000"><circle cx="26" cy="16" r="12"/><circle cx="52" cy="16" r="12"/><rect x="8" y="28" width="52" height="36" rx="8"/><path d="M62 40l18-10v32L62 52z"/></svg>
+      <span class="disp">1080p</span>
+    </button>
+  </div>
+
+  <div class="bar" id="bar"><b id="fill"></b></div>
+  <button class="dl" id="dl" disabled>
+    <span class="disp">Download</span>
+    <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6a6a"/><stop offset="1" stop-color="#3fd6d6"/></linearGradient></defs><rect x="4" y="10" width="48" height="40" rx="12" fill="url(#g)"/><path d="M28 20v20m-8-8 8 8 8-8" stroke="#1a0b33" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</main>
+
+<script>
+// Set this to your own server endpoint that accepts POST {url, format} and returns a file or JSON {url}.
+// A browser page cannot fetch videos from these sites by itself.
+var API_URL = "/api/download";
+
+var SITES = {
+  pinterest:/(^|\.)(pinterest\.[a-z.]+|pin\.it)$/i,
+  facebook:/(^|\.)(facebook\.com|fb\.watch|fb\.com)$/i,
+  instagram:/(^|\.)instagram\.com$/i,
+  youtube:/(^|\.)(youtube\.com|youtu\.be)$/i,
+  twitter:/(^|\.)(twitter\.com|x\.com)$/i
+};
+var $ = function(id){return document.getElementById(id)};
+var url=$("url"), msg=$("msg"), dl=$("dl"), fmt="video", site=null;
+
+function say(t,c){msg.textContent=t;msg.className="msg "+(c||"")}
+function light(p){
+  document.querySelectorAll("#social i").forEach(function(i){i.classList.toggle("on",i.dataset.p===p)});
+}
+function check(){
+  var v=url.value.trim(); site=null; light(null); dl.disabled=true;
+  if(!v){say("");return false}
+  var u;
+  try{u=new URL(/^https?:\/\//i.test(v)?v:"https://"+v)}catch(e){say("That isn’t a valid link. Paste the full address.","err");return false}
+  for(var k in SITES){ if(SITES[k].test(u.hostname)){site=k;break} }
+  if(!site){say("This site isn’t supported. Use Pinterest, Facebook, Instagram, YouTube or Twitter.","err");return false}
+  light(site); dl.disabled=false; say("Link looks good. Pick a format and download.","ok"); return true;
+}
+$("go").onclick=check;
+url.addEventListener("input",check);
+url.addEventListener("keydown",function(e){if(e.key==="Enter")check()});
+
+function pick(f){
+  fmt=f;
+  $("optA").setAttribute("aria-pressed",f==="audio");
+  $("optV").setAttribute("aria-pressed",f==="video");
+}
+$("optA").onclick=function(){pick("audio")};
+$("optV").onclick=function(){pick("video")};
+
+dl.onclick=function(){
+  if(!check())return;
+  if(!API_URL){say("Download server isn’t connected yet. Add your endpoint to API_URL in the script.","err");return}
+  var bar=$("bar"),fill=$("fill"); bar.style.display="block"; fill.style.width="30%"; dl.disabled=true; say("Preparing your file…");
+  fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({url:url.value.trim(),format:fmt==="audio"?"mp3-320":"mp4-1080"})})
+  .then(function(r){
+    if(!r.ok)throw new Error("Server returned "+r.status);
+    fill.style.width="70%";
+    return (r.headers.get("content-type")||"").indexOf("json")>-1 ? r.json().then(function(j){return j.url}) : r.blob().then(function(b){return URL.createObjectURL(b)});
+  })
+  .then(function(href){
+    var a=document.createElement("a"); a.href=href; a.download=fmt==="audio"?"audio.mp3":"video.mp4";
+    document.body.appendChild(a); a.click(); a.remove();
+    fill.style.width="100%"; say("Download started.","ok");
+  })
+  .catch(function(e){say("Download failed: "+e.message+". Check the link and try again.","err")})
+  .then(function(){dl.disabled=false;setTimeout(function(){bar.style.display="none";fill.style.width="0"},1500)});
+};
+</script>
+</body>
+</html>
